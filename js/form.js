@@ -1,12 +1,7 @@
 (function () {
-  var WEBHOOK_URL  = window.lfWebhookUrl || "https://YOUR_WEBHOOK_URL_HERE";
-  var HUBSPOT_PORTAL_ID = window.lfHubspotPortalId || "";
-  var HUBSPOT_FORM_GUID = window.lfHubspotFormGuid || "";
-  var REDIRECT_URL = window.lfRedirectUrl || "/thank-you/";
-
-  if (!HUBSPOT_PORTAL_ID && (!WEBHOOK_URL || WEBHOOK_URL.indexOf("YOUR_WEBHOOK") !== -1) && !window.lfDemoMode) {
-    console.warn("[lead form] Neither HubSpot (lfHubspotPortalId + lfHubspotFormGuid) nor WEBHOOK_URL is configured.");
-  }
+  var HUBSPOT_PORTAL_ID = window.lfHubspotPortalId || "246341570";
+  var HUBSPOT_FORM_GUID = window.lfHubspotFormGuid || "e0b2fc29-e29b-4983-850e-8dca7815d213";
+  var REDIRECT_URL      = window.lfRedirectUrl     || "/thank-you/";
 
   var STRINGS = {
     btnSubmit:        "Submit",
@@ -321,76 +316,58 @@
   };
 
   var TransportService = {
-    pair: function(ms) {
-      var c = new AbortController(); var t = setTimeout(function(){ c.abort(); }, ms);
-      return { signal: c.signal, timeoutId: t };
-    },
-    isTransient: function(status) { return [408,425,429,500,502,503,504].indexOf(status) !== -1; },
-    postHubspot: function(portalId, formGuid, payload) {
+    postToHubSpot: async function (portalId, formGuid, payload) {
       var url = "https://api.hsforms.com/submissions/v3/integration/submit/" + portalId + "/" + formGuid;
+
+      var hsFields = [
+        { name: "firstname",   value: payload.name },
+        { name: "email",       value: payload.email },
+        { name: "phone",       value: payload.phone },
+        { name: "mobilephone", value: payload.phone }
+      ];
+
+      var trackingKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fclid"];
+      trackingKeys.forEach(function(key) {
+        if (payload[key]) {
+          hsFields.push({ name: key, value: payload[key] });
+        }
+      });
+
       var hutkCookie = getCookie("hubspotutk");
-      var hsBody = {
-        fields: [
-          { name: "firstname", value: payload.name },
-          { name: "email",     value: payload.email },
-          { name: "phone",     value: payload.phone },
-          { name: "mobilephone", value: payload.phone }
-        ],
-        context: {
-          pageUri: payload.source_url || window.location.href,
-          pageName: document.title
-        }
+      var contextObj = {
+        pageUri: payload.source_url || window.location.href,
+        pageName: document.title || "acre&key Lead Form"
       };
-      if (hutkCookie) hsBody.context.hutk = hutkCookie;
-      if (payload.gclid) hsBody.fields.push({ name: "gclid", value: payload.gclid });
-
-      return fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(hsBody)
-      }).then(function(res) {
-        if (!res.ok) throw new Error("HubSpot API returned status " + res.status);
-        return res.json();
-      });
-    },
-    post: function(url, data, attempt) {
-      var self = this; var max = 3; var backoff = 1000;
-      var conn = self.pair(10000);
-      var headers = { "Content-Type": "application/json" };
-      if (FORM_SECRET) headers["X-Form-Secret"] = FORM_SECRET;
-
-      /* Check HubSpot direct submission option */
-      if (HUBSPOT_PORTAL_ID && HUBSPOT_FORM_GUID) {
-        return self.postHubspot(HUBSPOT_PORTAL_ID, HUBSPOT_FORM_GUID, data);
+      if (hutkCookie) {
+        contextObj.hutk = hutkCookie;
       }
 
-      /* Demo mode or unconfigured endpoint simulation */
-      if (window.lfDemoMode || !url || url.indexOf("YOUR_WEBHOOK") !== -1) {
-        return new Promise(function(resolve) {
-          setTimeout(function() { resolve({ success: true, demo: true }); }, 800);
+      var hsBody = {
+        fields: hsFields,
+        context: contextObj
+      };
+
+      try {
+        var response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(hsBody)
         });
-      }
 
-      return fetch(url, { method:"POST", headers: headers, body:JSON.stringify(data), signal:conn.signal })
-      .then(function(res) {
-        clearTimeout(conn.timeoutId);
-        if (!res.ok) {
-          if (self.isTransient(res.status) && attempt < max) {
-            return new Promise(function(resolve){ setTimeout(function(){ resolve(self.post(url, data, attempt+1)); }, backoff * Math.pow(2, attempt-1)); });
-          }
-          throw new Error("HTTP " + res.status);
+        if (!response.ok) {
+          var errData = await response.json().catch(function() { return {}; });
+          console.error("[HubSpot Forms API Error]", response.status, errData);
+          throw new Error(errData.message || ("HubSpot submission failed with status " + response.status));
         }
-        var ct = res.headers.get("content-type") || "";
-        if (res.status === 204 || ct.indexOf("application/json") === -1) return res.text().then(function(){ return {success:true}; });
-        return res.json();
-      })
-      .catch(function(err) {
-        clearTimeout(conn.timeoutId);
-        if (err.name !== "AbortError" && attempt < max) {
-          return new Promise(function(resolve){ setTimeout(function(){ resolve(self.post(url, data, attempt+1)); }, backoff * Math.pow(2, attempt-1)); });
-        }
+
+        var resJson = await response.json().catch(function() { return { inlineMessage: "Success" }; });
+        return resJson;
+      } catch (err) {
+        console.error("[HubSpot Submission Exception]", err);
         throw err;
-      });
+      }
     }
   };
 
@@ -636,12 +613,16 @@
     setTimeout(function(){ [nameInput, phoneInput, emailInput].forEach(function(i){ if(i) checkValueState(i); }); }, 100);
   })();
 
-  var formSubmitTracker = function(e) {
+  var formSubmitTracker = async function (e) {
     e.preventDefault();
     if (isSubmitting) return;
     submitted = true;
     globalErr.classList.remove("lf-show");
-    if (honeypot.value !== "") return;
+    
+    // Honeypot check
+    if (honeypot && honeypot.value !== "") return;
+    
+    // Timing check (min 1500ms form interaction time)
     if (!lfFormOpenTime || (Date.now() - lfFormOpenTime) < 1500) return;
 
     var nameOk  = ValidationService.vName();
@@ -651,15 +632,22 @@
 
     var lock = Store.get("lf_conversion_timestamp_lock");
     if (lock && (Date.now() - parseInt(lock, 10)) < 10 * 60 * 1000) {
-      globalErr.classList.add("lf-show"); globalErr.textContent = STRINGS.errCooldown; return;
+      globalErr.classList.add("lf-show");
+      globalErr.textContent = STRINGS.errCooldown;
+      return;
     }
-    if (!navigator.onLine) { globalErr.classList.add("lf-show"); return; }
+    if (!navigator.onLine) {
+      globalErr.classList.add("lf-show");
+      return;
+    }
 
     document.getElementById("lfSubmittedAt").value = new Date().toISOString();
-    isSubmitting = true; submitBtn.disabled = true;
-    submitBtn.classList.add("lf-loading"); btnText.textContent = STRINGS.btnSending;
+    isSubmitting = true;
+    submitBtn.disabled = true;
+    submitBtn.classList.add("lf-loading");
+    btnText.textContent = STRINGS.btnSending;
 
-    slowSubmitTimer = setTimeout(function() {
+    slowSubmitTimer = setTimeout(function () {
       if (isSubmitting) btnText.textContent = STRINGS.slowSubmit;
     }, 5000);
 
@@ -679,16 +667,21 @@
       utm_content:  document.getElementById("lfUtmContent").value
     };
 
-    TransportService.post(WEBHOOK_URL, payload, 1)
-    .then(function(data) {
-      if (data && data.success === false) throw new Error("API returned success: false");
+    try {
+      var portalId = window.lfHubspotPortalId || HUBSPOT_PORTAL_ID;
+      var formGuid = window.lfHubspotFormGuid || HUBSPOT_FORM_GUID;
+
+      await TransportService.postToHubSpot(portalId, formGuid, payload);
+
       clearTimeout(slowSubmitTimer);
       Store.set("lf_conversion_timestamp_lock", String(Date.now()));
 
+      // Success State UI
       mainFormContentBox.innerHTML = "";
       var canvas = document.createElement("div");
       canvas.className = "lf-success-canvas";
-      canvas.setAttribute("role","status"); canvas.setAttribute("aria-live","polite");
+      canvas.setAttribute("role","status");
+      canvas.setAttribute("aria-live","polite");
 
       var circle = document.createElement("div");
       circle.className = "lf-success-circle";
@@ -716,21 +709,26 @@
 
       setTimeout(function(){
         clearInterval(ticker);
-        isSubmitting = false; submitBtn.disabled = false;
-        submitBtn.classList.remove("lf-loading"); btnText.textContent = STRINGS.btnSubmit;
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("lf-loading");
+        btnText.textContent = STRINGS.btnSubmit;
         window.closeModal();
         if (REDIRECT_URL && REDIRECT_URL !== "#") {
           window.location.href = REDIRECT_URL;
         }
       }, delay);
-    })
-    .catch(function(err) {
+    } catch (err) {
       clearTimeout(slowSubmitTimer);
-      isSubmitting = false; submitBtn.disabled = false;
-      submitBtn.classList.remove("lf-loading"); btnText.textContent = STRINGS.btnSubmit;
+      isSubmitting = false;
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("lf-loading");
+      btnText.textContent = STRINGS.btnSubmit;
       globalErr.classList.add("lf-show");
-    });
+      console.error("[Submission Failed]", err);
+    }
   };
+
   if (form) form.addEventListener("submit", formSubmitTracker);
 
   window.lfActiveInstanceWipe = function() {
