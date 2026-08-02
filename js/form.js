@@ -322,9 +322,10 @@
       var url = "https://api.hsforms.com/submissions/v3/integration/submit/" + portalId + "/" + formGuid;
 
       var hsFields = [
-        { name: "firstname", value: payload.name },
-        { name: "email",     value: payload.email },
-        { name: "phone",     value: payload.phone }
+        { name: "firstname",   value: payload.name },
+        { name: "email",       value: payload.email },
+        { name: "phone",       value: payload.phone },
+        { name: "mobilephone", value: payload.phone }
       ];
 
       var trackingKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fclid"];
