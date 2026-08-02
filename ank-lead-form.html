@@ -1,32 +1,34 @@
-<!-- ── AnK Lead Form - Standalone Embeddable HTML Snippet ── -->
+<!-- ── acre&key Lead Form - Standalone Embeddable HTML Snippet ── -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=Marcellus&display=swap" rel="stylesheet">
 
 <button type="button" class="lf-page-cta-btn" id="lfModalTrigger">
   Book a Free 30-Min Call
 </button>
 
 <style>
-/* Scoped styles - will not affect the rest of your WordPress theme */
+/* Scoped styles - acre&key design system */
 .lf-modal-overlay,
 .lf-modal-overlay * { box-sizing: border-box; margin: 0; padding: 0; }
 
 .lf-page-cta-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 54px; padding: 0 28px;
-  border: none !important; border-radius: 0px !important;
-  background: #cfa847 !important; color: #1a1a1a !important;
-  font-family: 'DM Sans', sans-serif !important; font-size: 14px !important;
-  font-weight: 500 !important; letter-spacing: 0.1em !important;
+  height: 52px; padding: 0 32px;
+  border: none !important; border-radius: 4px !important;
+  background: #9A7B4F !important; color: #FFFFFF !important;
+  font-family: 'Manrope', sans-serif !important; font-size: 13px !important;
+  font-weight: 600 !important; letter-spacing: 0.1em !important;
   text-transform: uppercase !important; cursor: pointer !important;
-  box-shadow: none !important; transition: opacity 0.2s ease;
+  box-shadow: 0 1px 3px rgba(24, 42, 61, 0.05) !important;
+  transition: background-color 0.2s ease, transform 0.2s ease !important;
 }
-.lf-page-cta-btn:hover { opacity: 0.9; }
+.lf-page-cta-btn:hover { background: #866940 !important; transform: translateY(-1px); }
 
 /* ── MODAL OVERLAY ── */
 .lf-modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(15,15,15,0.6);
+  background: rgba(24, 42, 61, 0.65);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   z-index: 999999 !important;
   display: flex; align-items: center; justify-content: center;
@@ -36,26 +38,26 @@
 .lf-modal-overlay.lf-modal-open { opacity: 1; visibility: visible; }
 
 .lf-wrap {
-  --lf-font-sans: 'DM Sans', sans-serif;
-  --lf-font-mono: 'DM Mono', monospace;
-  --lf-ink:   #0f0f0f;
-  --lf-muted: #666;
-  --lf-line:  #dcdcdc;
-  --lf-line-focus: #0f0f0f;
+  --lf-font-sans: 'Manrope', sans-serif;
+  --lf-font-serif: 'Marcellus', serif;
+  --lf-ink:   #182A3D;
+  --lf-muted: rgba(24, 42, 61, 0.6);
+  --lf-line:  rgba(24, 42, 61, 0.14);
+  --lf-line-focus: #9A7B4F;
   --lf-err:   #c0392b;
   --lf-ok:    #2e7d52;
-  --lf-bg-surface: #ffffff;
+  --lf-bg-surface: #FFFFFF;
 
   position: relative; z-index: 10; width: 100%; max-width: 440px;
   background: var(--lf-bg-surface); border-radius: 8px;
   padding: 44px 40px 40px 40px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 24px 60px rgba(24, 42, 61, 0.25);
   max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto;
   transform: translateY(24px);
   transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 @media (max-width: 480px) {
-  .lf-wrap { padding: 32px 20px; }
+  .lf-wrap { padding: 32px 22px; }
 }
 .lf-modal-overlay.lf-modal-open .lf-wrap { transform: translateY(0); }
 
@@ -72,12 +74,12 @@
   display: flex; align-items: center; justify-content: center;
   transition: color 0.15s, transform 0.15s; z-index: 10;
 }
-.lf-modal-close-icon svg { width: 13px; height: 13px; }
-.lf-modal-close-icon:hover { color: var(--lf-ink); transform: scale(1.05); }
+.lf-modal-close-icon svg { width: 14px; height: 14px; }
+.lf-modal-close-icon:hover { color: var(--lf-ink); transform: scale(1.08); }
 
 .lf-header { margin-bottom: 26px; padding-right: 20px; }
-.lf-main-heading { font-size: 24px; font-weight: 500; margin-bottom: 6px; color: var(--lf-ink); }
-.lf-sub-heading { font-size: 14px; color: var(--lf-muted); line-height: 1.4; }
+.lf-main-heading { font-family: var(--lf-font-serif); font-size: 26px; font-weight: 400; margin-bottom: 6px; color: var(--lf-ink); letter-spacing: -0.01em; }
+.lf-sub-heading { font-family: var(--lf-font-sans); font-size: 14px; color: var(--lf-muted); line-height: 1.5; }
 
 .lf-form { display: flex; flex-direction: column; gap: 20px; }
 .lf-form .lf-field { position: relative; width: 100%; }
@@ -87,9 +89,9 @@
   border: 1px solid var(--lf-line); border-radius: 6px;
   background: var(--lf-bg-surface);
   display: flex; align-items: center; padding: 0 16px;
-  transition: border-color .2s, background-color .2s;
+  transition: border-color .2s, background-color .2s, box-shadow .2s;
 }
-.lf-field.lf-focused .lf-input-box { border-color: var(--lf-line-focus); }
+.lf-field.lf-focused .lf-input-box { border-color: var(--lf-line-focus); box-shadow: 0 0 0 3px rgba(154, 123, 79, 0.12); }
 .lf-field.lf-has-error .lf-input-box { border-color: var(--lf-err); background: #fffcfb; }
 .lf-field.lf-has-error.lf-focused .lf-input-box { border-color: var(--lf-line-focus); background: var(--lf-bg-surface); }
 .lf-field.lf-is-valid .lf-input-box { border-color: var(--lf-ok); }
@@ -106,8 +108,9 @@
 .lf-field.lf-has-value .lf-label,
 .lf-field.lf-autofilled .lf-label {
   top: 0 !important; transform: translateY(-50%) !important;
-  font-size: 11px !important; font-weight: 500 !important;
-  text-transform: uppercase !important;
+  font-size: 11px !important; font-weight: 600 !important;
+  text-transform: uppercase !important; letter-spacing: 0.05em !important;
+  color: #9A7B4F !important;
   background-color: var(--lf-bg-surface) !important; left: 12px !important;
 }
 .lf-field-phone .lf-label { left: 82px !important; }
@@ -120,14 +123,14 @@
 .lf-wrap input.lf-input {
   flex: 1 !important; width: 100% !important;
   border: none !important; background: transparent !important; outline: none !important;
-  font-family: var(--lf-font-mono) !important; font-size: 15px !important;
+  font-family: var(--lf-font-sans) !important; font-size: 15px !important; font-weight: 500 !important;
   color: var(--lf-ink) !important; padding: 14px 0 0 0 !important; height: 54px !important;
 }
 .lf-input-phone-stretch { flex: 1 !important; }
 
 .lf-clear-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  background: none; border: none; cursor: pointer; color: #bbb;
+  background: none; border: none; cursor: pointer; color: #999;
   padding: 6px; margin-left: 8px; flex-shrink: 0; z-index: 6;
   opacity: 0; visibility: hidden;
   transition: opacity 0.15s, color 0.15s; height: 32px; width: 32px;
@@ -153,7 +156,7 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
   justify-content: space-between !important; gap: 4px !important;
   cursor: pointer !important; padding: 12px 0 0 0 !important;
   background: none !important; border: none !important;
-  font-family: var(--lf-font-mono) !important; font-size: 15px !important;
+  font-family: var(--lf-font-sans) !important; font-size: 15px !important; font-weight: 600 !important;
   color: var(--lf-ink) !important; height: 54px !important; width: 54px !important;
   flex-shrink: 0 !important;
 }
@@ -168,9 +171,9 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
   z-index: 9999999 !important;
   width: calc(100% + 32px);
   background: #fff;
-  border: 1px solid #e2e2e2;
+  border: 1px solid rgba(24, 42, 61, 0.14);
   border-radius: 6px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  box-shadow: 0 12px 32px rgba(24, 42, 61, 0.15);
   max-height: 260px;
   overflow: hidden;
   flex-direction: column;
@@ -181,17 +184,17 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 @media (max-width: 600px) {
   .lf-cc-backdrop {
     display: none;
-    position: absolute !important; /* Locks perfectly to modal overlay */
+    position: absolute !important;
     inset: 0 !important;
-    background: rgba(0,0,0,0.6) !important;
-    z-index: 90 !important; /* Above the lf-wrap form box */
+    background: rgba(24,42,61,0.6) !important;
+    z-index: 90 !important;
   }
   .lf-cc-backdrop.lf-cc-open { display: block !important; }
 
   .lf-cc-panel {
-    display: flex !important; /* Always flex on mobile for transition tracking */
-    visibility: hidden; /* Visually hidden when closed */
-    position: absolute !important; /* Locks securely to modal overlay bottom */
+    display: flex !important;
+    visibility: hidden;
+    position: absolute !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
@@ -200,8 +203,8 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
     max-height: 60vh !important;
     border-radius: 16px 16px 0 0 !important;
     border: none !important;
-    box-shadow: 0 -10px 32px rgba(0,0,0,0.2) !important;
-    z-index: 100 !important; /* Above the backdrop */
+    box-shadow: 0 -10px 32px rgba(24,42,61,0.2) !important;
+    z-index: 100 !important;
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0.3s;
     padding-bottom: env(safe-area-inset-bottom);
@@ -218,7 +221,7 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
     content: '';
     display: block;
     width: 36px; height: 4px;
-    background: #ccc;
+    background: #DDD7CF;
     border-radius: 2px;
     margin: 12px auto 6px;
     flex-shrink: 0;
@@ -228,23 +231,23 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 .lf-cc-search {
   padding: 12px 14px;
   border: none !important;
-  border-bottom: 1px solid #eee !important;
+  border-bottom: 1px solid #DDD7CF !important;
   width: 100%; outline: none !important;
-  font-family: var(--lf-font-sans, 'DM Sans', sans-serif) !important;
-  font-size: 16px !important; /* 16px strictly prevents iOS Safari input zoom */
-  flex-shrink: 0;
+  font-family: var(--lf-font-sans) !important;
+  font-size: 16px !important;
+  flex-shrink: 0; color: #182A3D !important;
 }
 .lf-cc-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
 
 .lf-cc-opt {
   padding: 11px 14px;
-  font-family: var(--lf-font-sans, 'DM Sans', sans-serif) !important;
-  font-size: 13px; cursor: pointer; display: flex; gap: 10px; color: var(--lf-ink);
+  font-family: var(--lf-font-sans) !important;
+  font-size: 13.5px; cursor: pointer; display: flex; gap: 10px; color: var(--lf-ink);
   user-select: none; -webkit-user-select: none;
 }
-.lf-cc-opt:hover, .lf-cc-opt.lf-keyboard-active { background: #f7f7f7; outline: none; }
+.lf-cc-opt:hover, .lf-cc-opt.lf-keyboard-active { background: #FBF6F3; outline: none; }
 .lf-cc-trigger, .lf-cc-opt, .lf-page-cta-btn, .lf-btn, .lf-modal-close-icon { touch-action: manipulation; }
-.lf-cc-opt-dial { font-family: var(--lf-font-mono, 'DM Mono', monospace) !important; color: var(--lf-muted); min-width: 44px; }
+.lf-cc-opt-dial { font-family: var(--lf-font-sans) !important; font-weight: 600; color: #9A7B4F; min-width: 44px; }
 
 @media (max-width: 600px) {
   .lf-cc-opt { padding: 14px 16px; font-size: 15px; }
@@ -263,22 +266,22 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 
 .lf-btn {
   width: 100%; height: 54px;
-  border: none !important; border-radius: 0px !important;
-  background: #cfa847 !important; color: #1a1a1a !important;
+  border: none !important; border-radius: 4px !important;
+  background: #9A7B4F !important; color: #FFFFFF !important;
   font-family: var(--lf-font-sans) !important; font-size: 13px !important;
-  font-weight: 500 !important; letter-spacing: .16em !important;
+  font-weight: 600 !important; letter-spacing: .14em !important;
   text-transform: uppercase !important; cursor: pointer !important;
-  position: relative; overflow: hidden; box-shadow: none !important;
-  transition: opacity .2s ease !important;
+  position: relative; overflow: hidden; box-shadow: 0 1px 3px rgba(24,42,61,0.05) !important;
+  transition: background-color .2s ease, transform .2s ease, opacity .2s ease !important;
   display: flex; align-items: center; justify-content: center; gap: 10px;
 }
-.lf-btn:hover { opacity: 0.9 !important; }
-.lf-btn:disabled { opacity: 0.6 !important; cursor: not-allowed !important; }
+.lf-btn:hover { background: #866940 !important; transform: translateY(-1px); }
+.lf-btn:disabled { opacity: 0.6 !important; cursor: not-allowed !important; transform: none !important; }
 .lf-btn span { position: relative; z-index: 1; }
 
 .lf-spinner {
   display: none; width: 16px; height: 16px;
-  border: 2px solid rgba(26,26,26,0.3); border-top-color: #1a1a1a;
+  border: 2px solid rgba(255,255,255,0.4); border-top-color: #FFFFFF;
   border-radius: 50%; animation: lfSpin 0.7s linear infinite; flex-shrink: 0;
 }
 .lf-btn.lf-loading .lf-spinner { display: block; }
@@ -294,11 +297,11 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 
 .lf-success-canvas {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 40px 10px; text-align: center; font-family: 'DM Sans', sans-serif;
+  padding: 40px 10px; text-align: center; font-family: var(--lf-font-sans);
 }
 .lf-success-circle {
-  width: 64px; height: 64px; border-radius: 50%; background: #f4ebe1;
-  display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: #cfa847;
+  width: 64px; height: 64px; border-radius: 50%; background: #EDE8E2;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: #9A7B4F;
 }
 .lf-success-circle svg { width: 28px; height: 28px; stroke-dasharray: 40; stroke-dashoffset: 40; animation: lfStrokeCheck 0.4s cubic-bezier(0.4,0,0.2,1) forwards 0.15s; }
 @keyframes lfStrokeCheck { to { stroke-dashoffset: 0; } }
@@ -1050,12 +1053,12 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 
       var h3 = document.createElement("h3");
       h3.setAttribute("tabindex","-1");
-      h3.style.cssText = "font-size:20px;font-weight:500;color:#0f0f0f;margin-bottom:6px;outline:none;";
+      h3.style.cssText = "font-size:20px;font-weight:500;color:#182A3D;margin-bottom:6px;outline:none;";
       h3.textContent = STRINGS.successHeading;
 
       var delay = 3000; var remaining = 3;
       var p = document.createElement("p");
-      p.style.cssText = "font-size:14px;color:#666;";
+      p.style.cssText = "font-size:14px;color:rgba(24, 42, 61, 0.6);";
       p.textContent = STRINGS.successBody.replace("{n}", remaining);
 
       canvas.appendChild(circle); canvas.appendChild(h3); canvas.appendChild(p);
