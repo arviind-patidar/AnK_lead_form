@@ -1,9 +1,12 @@
 (function () {
   var WEBHOOK_URL  = window.lfWebhookUrl || "https://YOUR_WEBHOOK_URL_HERE";
-  if (!WEBHOOK_URL || WEBHOOK_URL.indexOf("YOUR_WEBHOOK") !== -1) {
-    console.warn("[lead form] WEBHOOK_URL is not configured. Set window.lfWebhookUrl or update form.js.");
-  }
+  var HUBSPOT_PORTAL_ID = window.lfHubspotPortalId || "";
+  var HUBSPOT_FORM_GUID = window.lfHubspotFormGuid || "";
   var REDIRECT_URL = window.lfRedirectUrl || "/thank-you/";
+
+  if (!HUBSPOT_PORTAL_ID && (!WEBHOOK_URL || WEBHOOK_URL.indexOf("YOUR_WEBHOOK") !== -1) && !window.lfDemoMode) {
+    console.warn("[lead form] Neither HubSpot (lfHubspotPortalId + lfHubspotFormGuid) nor WEBHOOK_URL is configured.");
+  }
 
   var STRINGS = {
     btnSubmit:        "Submit",
@@ -45,6 +48,11 @@
       }
     };
   })();
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? match[2] : null;
+  }
 
   var VARIABLE_LENGTH_COUNTRIES = ["US","CA","GB","AU","IN","BR","MX","NG","ID","PK"];
 
@@ -318,13 +326,45 @@
       return { signal: c.signal, timeoutId: t };
     },
     isTransient: function(status) { return [408,425,429,500,502,503,504].indexOf(status) !== -1; },
+    postHubspot: function(portalId, formGuid, payload) {
+      var url = "https://api.hsforms.com/submissions/v3/integration/submit/" + portalId + "/" + formGuid;
+      var hutkCookie = getCookie("hubspotutk");
+      var hsBody = {
+        fields: [
+          { name: "firstname", value: payload.name },
+          { name: "email",     value: payload.email },
+          { name: "phone",     value: payload.phone },
+          { name: "mobilephone", value: payload.phone }
+        ],
+        context: {
+          pageUri: payload.source_url || window.location.href,
+          pageName: document.title
+        }
+      };
+      if (hutkCookie) hsBody.context.hutk = hutkCookie;
+      if (payload.gclid) hsBody.fields.push({ name: "gclid", value: payload.gclid });
+
+      return fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(hsBody)
+      }).then(function(res) {
+        if (!res.ok) throw new Error("HubSpot API returned status " + res.status);
+        return res.json();
+      });
+    },
     post: function(url, data, attempt) {
       var self = this; var max = 3; var backoff = 1000;
       var conn = self.pair(10000);
       var headers = { "Content-Type": "application/json" };
       if (FORM_SECRET) headers["X-Form-Secret"] = FORM_SECRET;
 
-      /* If demo mode or unconfigured URL is detected, simulate successful submission */
+      /* Check HubSpot direct submission option */
+      if (HUBSPOT_PORTAL_ID && HUBSPOT_FORM_GUID) {
+        return self.postHubspot(HUBSPOT_PORTAL_ID, HUBSPOT_FORM_GUID, data);
+      }
+
+      /* Demo mode or unconfigured endpoint simulation */
       if (window.lfDemoMode || !url || url.indexOf("YOUR_WEBHOOK") !== -1) {
         return new Promise(function(resolve) {
           setTimeout(function() { resolve({ success: true, demo: true }); }, 800);
@@ -427,12 +467,9 @@
     ccSearch.removeAttribute("aria-activedescendant");
   }
 
-  /* ── OPEN / CLOSE PANEL ── */
   function openPanel() {
     if (ccPanel.classList.contains("lf-cc-open")) return;
-
     buildList("");
-
     if (isMobile()) {
       modalOverlay.appendChild(ccBackdrop);
       modalOverlay.appendChild(ccPanel);
@@ -456,14 +493,12 @@
     ccPanel.classList.remove("lf-cc-open");
     ccTrigger.setAttribute("aria-expanded", "false");
     ccBackdrop.classList.remove("lf-cc-open");
-
     setTimeout(function() {
       if (!ccPanel.classList.contains("lf-cc-open")) {
         var phoneRow = document.querySelector(".lf-phone-row");
         if (phoneRow && ccPanel) phoneRow.appendChild(ccPanel);
       }
     }, 300);
-
     document.removeEventListener("click", outsideClickListener);
     document.removeEventListener("touchstart", outsideClickListener);
   }
@@ -661,12 +696,12 @@
 
       var h3 = document.createElement("h3");
       h3.setAttribute("tabindex","-1");
-      h3.style.cssText = "font-size:20px;font-weight:500;color:#0f0f0f;margin-bottom:6px;outline:none;";
+      h3.style.cssText = "font-size:20px;font-weight:500;color:#182A3D;margin-bottom:6px;outline:none;";
       h3.textContent = STRINGS.successHeading;
 
       var delay = 3000; var remaining = 3;
       var p = document.createElement("p");
-      p.style.cssText = "font-size:14px;color:#666;";
+      p.style.cssText = "font-size:14px;color:rgba(24, 42, 61, 0.6);";
       p.textContent = STRINGS.successBody.replace("{n}", remaining);
 
       canvas.appendChild(circle); canvas.appendChild(h3); canvas.appendChild(p);
