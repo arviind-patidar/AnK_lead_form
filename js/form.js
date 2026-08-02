@@ -320,10 +320,9 @@
       var url = "https://api.hsforms.com/submissions/v3/integration/submit/" + portalId + "/" + formGuid;
 
       var hsFields = [
-        { name: "firstname",   value: payload.name },
-        { name: "email",       value: payload.email },
-        { name: "phone",       value: payload.phone },
-        { name: "mobilephone", value: payload.phone }
+        { name: "firstname", value: payload.name },
+        { name: "email",     value: payload.email },
+        { name: "phone",     value: payload.phone }
       ];
 
       var trackingKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fclid"];
@@ -335,7 +334,7 @@
 
       var hutkCookie = getCookie("hubspotutk");
       var contextObj = {
-        pageUri: payload.source_url || window.location.href,
+        pageUri: (window.location.protocol === "file:") ? "https://acrenkey.com/lead-form" : (payload.source_url || window.location.href),
         pageName: document.title || "acre&key Lead Form"
       };
       if (hutkCookie) {
@@ -347,27 +346,25 @@
         context: contextObj
       };
 
-      try {
-        var response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(hsBody)
-        });
+      console.log("[HubSpot Submission Request]", url, hsBody);
 
-        if (!response.ok) {
-          var errData = await response.json().catch(function() { return {}; });
-          console.error("[HubSpot Forms API Error]", response.status, errData);
-          throw new Error(errData.message || ("HubSpot submission failed with status " + response.status));
-        }
+      var response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(hsBody)
+      });
 
-        var resJson = await response.json().catch(function() { return { inlineMessage: "Success" }; });
-        return resJson;
-      } catch (err) {
-        console.error("[HubSpot Submission Exception]", err);
-        throw err;
+      if (!response.ok) {
+        var errData = await response.json().catch(function() { return {}; });
+        console.error("[HubSpot Forms API Error]", response.status, errData);
+        throw new Error(errData.message || ("HubSpot submission failed with status " + response.status));
       }
+
+      var resJson = await response.json().catch(function() { return { inlineMessage: "Success" }; });
+      console.log("[HubSpot Submission Success]", resJson);
+      return resJson;
     }
   };
 
