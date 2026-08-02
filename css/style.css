@@ -330,6 +330,16 @@ body {
 }
 .lf-input-phone-stretch { flex: 1 !important; }
 
+/* ── Prevent Browser Blue Autofill Background ── */
+.lf-wrap input.lf-input:-webkit-autofill,
+.lf-wrap input.lf-input:-webkit-autofill:hover, 
+.lf-wrap input.lf-input:-webkit-autofill:focus, 
+.lf-wrap input.lf-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+  -webkit-text-fill-color: var(--lf-ink) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .lf-clear-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer; color: #999;

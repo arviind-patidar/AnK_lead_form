@@ -2,6 +2,7 @@
   var HUBSPOT_PORTAL_ID = window.lfHubspotPortalId || "246341570";
   var HUBSPOT_FORM_GUID = window.lfHubspotFormGuid || "e0b2fc29-e29b-4983-850e-8dca7815d213";
   var REDIRECT_URL      = window.lfRedirectUrl     || "/thank-you/";
+  var COOLDOWN_SECONDS  = (typeof window.lfCooldownSeconds !== "undefined") ? window.lfCooldownSeconds : 15;
 
   var STRINGS = {
     btnSubmit:        "Submit",
@@ -14,7 +15,7 @@
     errPhoneUnknown:  "Country code not recognised — please select manually",
     errEmailRequired: "Email is required",
     errEmailInvalid:  "Enter a valid email",
-    errCooldown:      "You've already submitted recently. Please wait before trying again.",
+    errCooldown:      "You've already submitted recently. Please wait a few seconds before trying again.",
     slowSubmit:       "Still submitting... Please wait.",
     successHeading:   "Thank You",
     successBody:      "Your request has been received. Redirecting in {n}s...",
@@ -215,6 +216,7 @@
     open: function () {
       lfFormOpenTime = Date.now();
       lastActiveElement = document.activeElement;
+      if (globalErr) globalErr.classList.remove("lf-show");
       var sw = window.innerWidth - document.documentElement.clientWidth;
       if (sw > 0) document.body.style.paddingRight = sw + "px";
       modalOverlay.classList.add("lf-modal-open");
@@ -628,7 +630,8 @@
     if (!(nameOk && phoneOk && emailOk)) return;
 
     var lock = Store.get("lf_conversion_timestamp_lock");
-    if (lock && (Date.now() - parseInt(lock, 10)) < 10 * 60 * 1000) {
+    var cooldownMs = COOLDOWN_SECONDS * 1000;
+    if (lock && (Date.now() - parseInt(lock, 10)) < cooldownMs) {
       globalErr.classList.add("lf-show");
       globalErr.textContent = STRINGS.errCooldown;
       return;
