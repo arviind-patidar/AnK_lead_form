@@ -19,6 +19,8 @@
     slowSubmit:       "Still submitting... Please wait.",
     successHeading:   "Thank You",
     successBody:      "Your request has been received. Redirecting in {n}s...",
+    successBodyStay:  "Your request has been received. Someone will reach out to you in 24 hours.",
+    errOffline:       "Connection issue. Your details are safely held — please click Submit once more to retry or reach out to support.",
   };
 
   var FORM_SECRET = window.lfFormSecret || "";
@@ -159,6 +161,87 @@
     return _sorted;
   }
 
+  // Prefer major regions when multiple countries share a dial code (e.g. +1 NANP)
+  var DIAL_CODE_PREFERENCE = {
+    "+1": ["US", "CA"],
+    "+7": ["RU", "KZ"]
+  };
+
+  function findCountryByDial(prefix, list) {
+    var matches = list.filter(function(c){ return c.dial === prefix; });
+    if (!matches.length) return null;
+    if (matches.length === 1) return matches[0];
+    var prefer = DIAL_CODE_PREFERENCE[prefix] || [];
+    for (var p = 0; p < prefer.length; p++) {
+      var hit = matches.find(function(c){ return c.code === prefer[p]; });
+      if (hit) return hit;
+    }
+    return matches[0];
+  }
+
+  function stripTrunkZero(nationalDigits) {
+    if (!nationalDigits) return nationalDigits;
+    // National trunk prefix: strip a single leading 0 (e.g. 0987… → 987…)
+    if (nationalDigits.charAt(0) === "0" && nationalDigits.length > 1) {
+      return nationalDigits.substring(1);
+    }
+    return nationalDigits;
+  }
+
+  function fitsCountryLength(country, digits) {
+    if (!country || !digits) return false;
+    var expLen = country.len || 10;
+    var isVar = VARIABLE_LENGTH_COUNTRIES.indexOf(country.code) !== -1;
+    var min = isVar ? expLen - 1 : expLen;
+    var max = isVar ? expLen + 1 : expLen;
+    return digits.length >= min && digits.length <= max;
+  }
+
+  function countryMaxLen(country) {
+    if (!country) return 15;
+    var expLen = country.len || 10;
+    var isVar = VARIABLE_LENGTH_COUNTRIES.indexOf(country.code) !== -1;
+    return isVar ? expLen + 1 : expLen;
+  }
+
+  // Bare digits without + / 00: strip current dial when remainder is valid, else detect
+  // another country only when the full string does not already fit the selected country
+  // (avoids IN 98… being misread as Iran +98).
+  // Slightly-overlong local entry (max+1..max+4) only allows 3–4 digit dial codes
+  // so 987654321012 stays an India length error instead of becoming +98 Iran.
+  function tryParseBareIntl(digits, countryList) {
+    if (!digits) return null;
+    if (currentCountry) {
+      var curDial = currentCountry.dial.replace(/\D/g, "");
+      if (curDial && digits.indexOf(curDial) === 0 && digits.length > curDial.length) {
+        var curNat = stripTrunkZero(digits.substring(curDial.length));
+        if (fitsCountryLength(currentCountry, curNat)) {
+          return { country: currentCountry, national: curNat };
+        }
+      }
+      if (fitsCountryLength(currentCountry, digits)) return null;
+    }
+
+    var maxDialLen = 4;
+    if (currentCountry) {
+      var maxLocal = countryMaxLen(currentCountry);
+      var over = digits.length - maxLocal;
+      if (over >= 1 && over <= 4) maxDialLen = 3; // require +971-style codes, not +98/+1
+    }
+
+    for (var i = maxDialLen; i >= 1; i--) {
+      if (digits.length <= i) continue;
+      if (currentCountry && maxDialLen === 3 && i < 3) continue;
+      var matched = findCountryByDial("+" + digits.substring(0, i), countryList);
+      if (!matched) continue;
+      var national = stripTrunkZero(digits.substring(i));
+      if (national && fitsCountryLength(matched, national)) {
+        return { country: matched, national: national };
+      }
+    }
+    return null;
+  }
+
   var isMobile = function() { return window.innerWidth <= 600; };
 
   var modalOverlay       = document.getElementById("lfModalOverlay");
@@ -198,6 +281,11 @@
   var filteredCountries = [];
   var searchDebounceTimer = null;
   var lastActiveElement = null;
+  var successCloseTimer = null;
+  var successTicker = null;
+  var showingSuccess = false;
+  var phoneWatchTimer = null;
+  var lastPhoneSyncedRaw = null;
 
   function updateClearButtonsA11y(inputEl) {
     var field = inputEl.closest(".lf-field");
@@ -212,8 +300,76 @@
     }
   }
 
+  function setBackgroundA11y(hidden) {
+    var nodes = document.querySelectorAll("body > *:not(#lfModalOverlay)");
+    for (var i = 0; i < nodes.length; i++) {
+      if (hidden) {
+        nodes[i].setAttribute("aria-hidden", "true");
+        try { nodes[i].inert = true; } catch (e) {}
+      } else {
+        nodes[i].removeAttribute("aria-hidden");
+        try { nodes[i].inert = false; } catch (e) {}
+      }
+    }
+  }
+
+  function resetSubmitButton() {
+    isSubmitting = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("lf-loading");
+    }
+    if (btnText) btnText.textContent = STRINGS.btnSubmit;
+  }
+
+  function exitSuccessState() {
+    if (successCloseTimer) { clearTimeout(successCloseTimer); successCloseTimer = null; }
+    if (successTicker) { clearInterval(successTicker); successTicker = null; }
+    var canvas = mainFormContentBox && mainFormContentBox.querySelector(".lf-success-canvas");
+    if (canvas) canvas.parentNode.removeChild(canvas);
+    if (mainFormContentBox) mainFormContentBox.classList.remove("lf-showing-success");
+    showingSuccess = false;
+    resetSubmitButton();
+    submitted = false;
+    if (globalErr) {
+      globalErr.classList.remove("lf-show");
+      globalErr.textContent = STRINGS.errOffline;
+    }
+    if (nameInput) nameInput.value = "";
+    if (phoneInput) phoneInput.value = "";
+    if (emailInput) emailInput.value = "";
+    if (honeypot) honeypot.value = "";
+    if (nameField && nameErr) ValidationService.clrErr(nameField, nameErr);
+    if (phoneField && phoneErr) ValidationService.clrErr(phoneField, phoneErr);
+    if (emailField && emailErr) ValidationService.clrErr(emailField, emailErr);
+    if (nameField) ValidationService.clrValid(nameField);
+    if (phoneField) ValidationService.clrValid(phoneField);
+    if (emailField) ValidationService.clrValid(emailField);
+    [nameInput, phoneInput, emailInput].forEach(function(el) {
+      if (el) checkValueState(el);
+    });
+  }
+
+  function startPhoneAutofillWatch() {
+    stopPhoneAutofillWatch();
+    lastPhoneSyncedRaw = phoneInput ? phoneInput.value : null;
+    phoneWatchTimer = setInterval(function() {
+      if (!phoneInput || !modalOverlay.classList.contains("lf-modal-open")) return;
+      var cur = phoneInput.value;
+      if (cur === lastPhoneSyncedRaw) return;
+      lastPhoneSyncedRaw = cur;
+      PhoneSyncManager.syncInput();
+      lastPhoneSyncedRaw = phoneInput.value;
+    }, 300);
+  }
+
+  function stopPhoneAutofillWatch() {
+    if (phoneWatchTimer) { clearInterval(phoneWatchTimer); phoneWatchTimer = null; }
+  }
+
   var ModalController = {
     open: function () {
+      if (showingSuccess) exitSuccessState();
       lfFormOpenTime = Date.now();
       lastActiveElement = document.activeElement;
       if (globalErr) globalErr.classList.remove("lf-show");
@@ -221,14 +377,19 @@
       if (sw > 0) document.body.style.paddingRight = sw + "px";
       modalOverlay.classList.add("lf-modal-open");
       document.body.style.overflow = "hidden";
+      setBackgroundA11y(true);
       [nameInput, phoneInput, emailInput].forEach(updateClearButtonsA11y);
-      setTimeout(function() { nameInput.focus(); }, 250);
+      startPhoneAutofillWatch();
+      setTimeout(function() { if (nameInput) nameInput.focus(); }, 250);
     },
     close: function () {
+      stopPhoneAutofillWatch();
       modalOverlay.classList.remove("lf-modal-open");
       document.body.style.overflow = "";
       document.body.style.paddingRight = "";
+      setBackgroundA11y(false);
       closePanel();
+      if (showingSuccess) exitSuccessState();
       if (lastActiveElement && typeof lastActiveElement.focus === "function") lastActiveElement.focus();
     }
   };
@@ -289,31 +450,54 @@
 
   var PhoneSyncManager = {
     syncInput: function() {
+      if (!phoneInput) return;
       var raw = phoneInput.value.trim();
       var s = getSorted();
-      if (raw.indexOf('+') === 0 || raw.indexOf('00') === 0) {
-        if (raw.indexOf('00') === 0) raw = '+' + raw.substring(2);
-        var digits = raw.replace(/\D/g, "");
+      var startedWith00 = raw.indexOf("00") === 0;
+      var startedWithPlus = raw.indexOf("+") === 0;
+
+      if (startedWithPlus || startedWith00) {
+        var intlRaw = startedWith00 ? ("+" + raw.substring(2)) : raw;
+        var digits = intlRaw.replace(/\D/g, "");
         var matched = null;
         for (var i = 4; i >= 1; i--) {
           var prefix = "+" + digits.substring(0, i);
-          matched = s.find(function(c){ return c.dial === prefix; });
+          matched = findCountryByDial(prefix, s);
           if (matched) break;
         }
         if (matched) {
           selectCountry(matched);
-          phoneInput.value = digits.substring(matched.dial.replace(/\D/g, "").length);
+          phoneInput.value = stripTrunkZero(digits.substring(matched.dial.replace(/\D/g, "").length));
+        } else if (startedWith00 && !startedWithPlus) {
+          // 00… that isn't a known country — treat as local digits (don't force "unknown code")
+          phoneInput.value = stripTrunkZero(raw.replace(/\D/g, ""));
         } else {
           phoneInput.value = raw.replace(/\D/g, "");
+          if (phoneInput.value.length > 15) phoneInput.value = phoneInput.value.substring(0, 15);
+          checkValueState(phoneInput);
           ValidationService.setErr(phoneField, phoneErr, STRINGS.errPhoneUnknown);
+          lastPhoneSyncedRaw = phoneInput.value;
+          return;
         }
       } else {
-        var stripped = raw.replace(/^\+91/, '').replace(/^091/, '').replace(/\D/g, '');
-        phoneInput.value = stripped;
+        var stripped = raw.replace(/^091/, "").replace(/\D/g, "");
+        stripped = stripTrunkZero(stripped);
+        var bare = tryParseBareIntl(stripped, s);
+        if (bare) {
+          selectCountry(bare.country);
+          phoneInput.value = bare.national;
+        } else {
+          phoneInput.value = stripped;
+        }
       }
       if (phoneInput.value.length > 15) phoneInput.value = phoneInput.value.substring(0, 15);
       checkValueState(phoneInput);
+      // Clear stale unknown-code error after a successful re-parse
+      if (phoneErr && phoneErr.textContent === STRINGS.errPhoneUnknown) {
+        ValidationService.clrErr(phoneField, phoneErr);
+      }
       if (submitted) ValidationService.vPhone(true);
+      lastPhoneSyncedRaw = phoneInput.value;
     }
   };
 
@@ -376,6 +560,8 @@
       if (e.animationName === "lfAutofillDetected") {
         inp.closest(".lf-field").classList.add("lf-autofilled");
         checkValueState(inp);
+        // Chrome autofill may set value without firing input/change/paste
+        if (inp === phoneInput) PhoneSyncManager.syncInput();
       }
     };
     inp.addEventListener("animationstart", h);
@@ -625,10 +811,18 @@
     // Timing check (min 1500ms form interaction time)
     if (!lfFormOpenTime || (Date.now() - lfFormOpenTime) < 1500) return;
 
+    // Catch silent browser autofill that never fired input/change/paste
+    if (phoneInput) PhoneSyncManager.syncInput();
+
     var nameOk  = ValidationService.vName();
     var phoneOk = ValidationService.vPhone();
     var emailOk = ValidationService.vEmail();
-    if (!(nameOk && phoneOk && emailOk)) return;
+    if (!(nameOk && phoneOk && emailOk)) {
+      if (!nameOk) nameInput.focus();
+      else if (!phoneOk) phoneInput.focus();
+      else emailInput.focus();
+      return;
+    }
 
     var lock = Store.get("lf_conversion_timestamp_lock");
     var cooldownMs = COOLDOWN_SECONDS * 1000;
@@ -639,6 +833,7 @@
     }
     if (!navigator.onLine) {
       globalErr.classList.add("lf-show");
+      globalErr.textContent = STRINGS.errOffline;
       return;
     }
 
@@ -677,8 +872,12 @@
       clearTimeout(slowSubmitTimer);
       Store.set("lf_conversion_timestamp_lock", String(Date.now()));
 
-      // Success State UI
-      mainFormContentBox.innerHTML = "";
+      // Success State UI — hide form without destroying it so reopen still works
+      var existingSuccess = mainFormContentBox.querySelector(".lf-success-canvas");
+      if (existingSuccess) existingSuccess.parentNode.removeChild(existingSuccess);
+      mainFormContentBox.classList.add("lf-showing-success");
+      showingSuccess = true;
+
       var canvas = document.createElement("div");
       canvas.className = "lf-success-canvas";
       canvas.setAttribute("role","status");
@@ -693,39 +892,40 @@
       h3.style.cssText = "font-size:20px;font-weight:500;color:#182A3D;margin-bottom:6px;outline:none;";
       h3.textContent = STRINGS.successHeading;
 
-      var delay = 3000; var remaining = 3;
+      var willRedirect = !!(REDIRECT_URL && REDIRECT_URL !== "#");
+      var delay = willRedirect ? 3000 : 2500;
+      var remaining = 3;
       var p = document.createElement("p");
       p.style.cssText = "font-size:14px;color:rgba(24, 42, 61, 0.6);";
-      p.textContent = STRINGS.successBody.replace("{n}", remaining);
+      p.textContent = willRedirect
+        ? STRINGS.successBody.replace("{n}", remaining)
+        : STRINGS.successBodyStay;
 
       canvas.appendChild(circle); canvas.appendChild(h3); canvas.appendChild(p);
       mainFormContentBox.appendChild(canvas);
       setTimeout(function() { h3.focus(); }, 50);
 
-      var ticker = setInterval(function() {
-        remaining--;
-        if (remaining > 0) p.textContent = STRINGS.successBody.replace("{n}", remaining);
-        else clearInterval(ticker);
-      }, 1000);
+      if (willRedirect) {
+        successTicker = setInterval(function() {
+          remaining--;
+          if (remaining > 0) p.textContent = STRINGS.successBody.replace("{n}", remaining);
+          else clearInterval(successTicker);
+        }, 1000);
+      }
 
-      setTimeout(function(){
-        clearInterval(ticker);
-        isSubmitting = false;
-        submitBtn.disabled = false;
-        submitBtn.classList.remove("lf-loading");
-        btnText.textContent = STRINGS.btnSubmit;
+      successCloseTimer = setTimeout(function(){
+        if (successTicker) { clearInterval(successTicker); successTicker = null; }
+        successCloseTimer = null;
         window.closeModal();
-        if (REDIRECT_URL && REDIRECT_URL !== "#") {
+        if (willRedirect) {
           window.location.href = REDIRECT_URL;
         }
       }, delay);
     } catch (err) {
       clearTimeout(slowSubmitTimer);
-      isSubmitting = false;
-      submitBtn.disabled = false;
-      submitBtn.classList.remove("lf-loading");
-      btnText.textContent = STRINGS.btnSubmit;
+      resetSubmitButton();
       globalErr.classList.add("lf-show");
+      globalErr.textContent = STRINGS.errOffline;
       console.error("[Submission Failed]", err);
     }
   };
@@ -734,6 +934,7 @@
 
   window.lfActiveInstanceWipe = function() {
     clearTimeout(searchDebounceTimer);
+    stopPhoneAutofillWatch();
     if (modalTrigger) modalTrigger.removeEventListener("click", window.openModal);
     if (modalClose) modalClose.removeEventListener("click", window.closeModal);
     modalOverlay.removeEventListener("click", overlayClickTracker);

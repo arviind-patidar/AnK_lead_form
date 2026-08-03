@@ -328,6 +328,10 @@ body {
   font-weight: 500 !important;
   color: var(--lf-ink) !important; padding: 14px 0 0 0 !important; height: 54px !important;
 }
+@media (max-width: 600px) {
+  /* 16px prevents focus-zoom on Android Chrome / iOS Safari */
+  .lf-wrap input.lf-input { font-size: 16px !important; }
+}
 .lf-input-phone-stretch { flex: 1 !important; }
 
 /* ── Prevent Browser Blue Autofill Background ── */
@@ -512,6 +516,9 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 .lf-success-canvas {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 40px 10px; text-align: center; font-family: var(--lf-font-sans);
+}
+#lfModalFormContent.lf-showing-success > :not(.lf-success-canvas) {
+  display: none !important;
 }
 .lf-success-circle {
   width: 64px; height: 64px; border-radius: 50%; background: var(--sd-warm-stone);
