@@ -242,7 +242,9 @@
     return null;
   }
 
-  var isMobile = function() { return window.innerWidth <= 600; };
+  var isMobile = function() {
+    return window.matchMedia("(max-width: 600px)").matches;
+  };
 
   var modalOverlay       = document.getElementById("lfModalOverlay");
   var modalTrigger       = document.getElementById("lfModalTrigger");
