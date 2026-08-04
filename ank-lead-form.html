@@ -7,7 +7,7 @@
   <meta name="description" content="Acre & Key represents the interests of home buyers with independent guidance, comprehensive checks, and dedicated concierge support.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=Marcellus&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Marcellus&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0;padding:0;background:#182A3D;font-family:'Manrope',sans-serif;">
 
@@ -175,8 +175,6 @@
   font-family: var(--lf-font-sans) !important; font-size: 16px !important; font-weight: 500 !important;
   color: var(--lf-ink) !important; padding: 14px 0 0 0 !important; height: 54px !important;
 }
-
-.lf-input-phone-stretch { flex: 1 !important; }
 
 /* ── Prevent Browser Blue Autofill Background ── */
 .lf-wrap input.lf-input:-webkit-autofill,
@@ -430,7 +428,7 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 
               <input type="hidden" id="lfCcVal" name="country_code" value="+91">
               <div class="lf-divider"></div>
-              <input class="lf-input lf-focusable lf-input-phone-stretch" type="tel" id="lfPhone" name="phone" inputmode="numeric" autocomplete="tel" enterkeyhint="next" aria-required="true" tabindex="0" aria-invalid="false" maxlength="15" aria-describedby="lfPhoneErr">
+              <input class="lf-input lf-focusable" type="tel" id="lfPhone" name="phone" inputmode="numeric" autocomplete="tel" enterkeyhint="next" aria-required="true" tabindex="0" aria-invalid="false" maxlength="15" aria-describedby="lfPhoneErr">
               <span class="lf-valid-icon" aria-hidden="true">
                 <svg viewBox="0 0 14 14" fill="none"><path d="M1 7l4 4 8-8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </span>
@@ -494,7 +492,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
     errOffline:       "Connection issue. Your details are safely held — please click Submit once more to retry or reach out to support.",
   };
 
-  var FORM_SECRET = window.lfFormSecret || "";
   var nameRx  = /^[\p{Letter}\p{Mark}\p{Number}\s.'-]{2,60}$/u;
   var emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
