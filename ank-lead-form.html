@@ -49,21 +49,53 @@
   --lf-bg-surface: #FFFFFF;
 
   position: relative; z-index: 10; width: 100%; max-width: 440px;
-  background: var(--lf-bg-surface); border-radius: 8px;
+  background: var(--lf-bg-surface); border-radius: 12px;
   padding: 44px 40px 40px 40px;
   box-shadow: 0 24px 60px rgba(24, 42, 61, 0.25);
   max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto;
   transform: translateY(24px);
   transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
 }
-@media (max-width: 480px) {
-  .lf-wrap { padding: 32px 22px; }
+
+/* ── MOBILE FULL-WIDTH LUXURY BOTTOM SHEET ── */
+@media (max-width: 600px) {
+  .lf-modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+  
+  .lf-wrap {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    padding: 28px 24px calc(24px + env(safe-area-inset-bottom)) 24px !important;
+    max-height: 90vh !important;
+    max-height: 90dvh !important;
+    transform: translateY(100%);
+    box-shadow: 0 -10px 40px rgba(24, 42, 61, 0.2) !important;
+  }
 }
+
 .lf-modal-overlay.lf-modal-open .lf-wrap { transform: translateY(0); }
 
 @media (prefers-reduced-motion: reduce) {
   .lf-modal-overlay, .lf-wrap, .lf-label {
     transition: none !important; transform: none !important; backdrop-filter: none !important;
+  }
+}
+
+/* Drag Indicator Handle for Mobile */
+.lf-drag-handle {
+  display: none;
+}
+@media (max-width: 600px) {
+  .lf-drag-handle {
+    display: block;
+    width: 38px;
+    height: 4px;
+    background: #DDD7CF;
+    border-radius: 2px;
+    margin: 0 auto 20px auto;
   }
 }
 
@@ -80,6 +112,12 @@
 .lf-header { margin-bottom: 26px; padding-right: 20px; }
 .lf-main-heading { font-family: var(--lf-font-serif); font-size: 26px; font-weight: 400; margin-bottom: 6px; color: var(--lf-ink); letter-spacing: -0.01em; }
 .lf-sub-heading { font-family: var(--lf-font-sans); font-size: 14px; color: var(--lf-muted); line-height: 1.5; }
+
+@media (max-width: 600px) {
+  .lf-header { margin-bottom: 22px; }
+  .lf-main-heading { font-size: 24px; }
+  .lf-sub-heading { font-size: 14px; }
+}
 
 .lf-form { display: flex; flex-direction: column; gap: 20px; }
 .lf-form .lf-field { position: relative; width: 100%; }
@@ -171,8 +209,8 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
   cursor: pointer !important; padding: 12px 0 0 0 !important;
   background: none !important; border: none !important;
   font-family: var(--lf-font-sans) !important; font-size: 15px !important; font-weight: 600 !important;
-  color: var(--lf-ink) !important; height: 54px !important; width: 54px !important;
-  flex-shrink: 0 !important;
+  color: var(--lf-ink) !important; height: 54px !important; min-width: 58px !important; width: auto !important;
+  flex-shrink: 0 !important; padding-right: 4px !important;
 }
 .lf-cc-arrow { width: 8px; height: 5px; color: var(--lf-muted); flex-shrink: 0; }
 
@@ -330,6 +368,8 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
   <div class="lf-cc-backdrop" id="lfCcBackdrop"></div>
 
   <div class="lf-wrap" id="lfWrap" role="dialog" aria-modal="true" aria-labelledby="lfMainHeading" aria-describedby="lfSubHeading">
+
+    <div class="lf-drag-handle"></div>
 
     <button type="button" class="lf-modal-close-icon lf-focusable" id="lfModalClose" aria-label="Close modal window" tabindex="0">
       <svg viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -585,7 +625,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
     return _sorted;
   }
 
-  // Prefer major regions when multiple countries share a dial code (e.g. +1 NANP)
   var DIAL_CODE_PREFERENCE = {
     "+1": ["US", "CA"],
     "+7": ["RU", "KZ"]
@@ -605,7 +644,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
 
   function stripTrunkZero(nationalDigits) {
     if (!nationalDigits) return nationalDigits;
-    // National trunk prefix: strip a single leading 0 (e.g. 0987… → 987…)
     if (nationalDigits.charAt(0) === "0" && nationalDigits.length > 1) {
       return nationalDigits.substring(1);
     }
@@ -628,11 +666,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
     return isVar ? expLen + 1 : expLen;
   }
 
-  // Bare digits without + / 00: strip current dial when remainder is valid, else detect
-  // another country only when the full string does not already fit the selected country
-  // (avoids IN 98… being misread as Iran +98).
-  // Slightly-overlong local entry (max+1..max+4) only allows 3–4 digit dial codes
-  // so 987654321012 stays an India length error instead of becoming +98 Iran.
   function tryParseBareIntl(digits, countryList) {
     if (!digits) return null;
     if (currentCountry) {
@@ -650,7 +683,7 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
     if (currentCountry) {
       var maxLocal = countryMaxLen(currentCountry);
       var over = digits.length - maxLocal;
-      if (over >= 1 && over <= 4) maxDialLen = 3; // require +971-style codes, not +98/+1
+      if (over >= 1 && over <= 4) maxDialLen = 3;
     }
 
     for (var i = maxDialLen; i >= 1; i--) {
@@ -895,7 +928,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
           selectCountry(matched);
           phoneInput.value = stripTrunkZero(digits.substring(matched.dial.replace(/\D/g, "").length));
         } else if (startedWith00 && !startedWithPlus) {
-          // 00… that isn't a known country — treat as local digits (don't force "unknown code")
           phoneInput.value = stripTrunkZero(raw.replace(/\D/g, ""));
         } else {
           phoneInput.value = raw.replace(/\D/g, "");
@@ -918,7 +950,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
       }
       if (phoneInput.value.length > 15) phoneInput.value = phoneInput.value.substring(0, 15);
       checkValueState(phoneInput);
-      // Clear stale unknown-code error after a successful re-parse
       if (phoneErr && phoneErr.textContent === STRINGS.errPhoneUnknown) {
         ValidationService.clrErr(phoneField, phoneErr);
       }
@@ -986,7 +1017,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
       if (e.animationName === "lfAutofillDetected") {
         inp.closest(".lf-field").classList.add("lf-autofilled");
         checkValueState(inp);
-        // Chrome autofill may set value without firing input/change/paste
         if (inp === phoneInput) PhoneSyncManager.syncInput();
       }
     };
@@ -1237,7 +1267,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
     // Timing check (min 1500ms form interaction time)
     if (!lfFormOpenTime || (Date.now() - lfFormOpenTime) < 1500) return;
 
-    // Catch silent browser autofill that never fired input/change/paste
     if (phoneInput) PhoneSyncManager.syncInput();
 
     var nameOk  = ValidationService.vName();
@@ -1298,7 +1327,6 @@ input:-webkit-autofill { animation-name: lfAutofillDetected; animation-duration:
       clearTimeout(slowSubmitTimer);
       Store.set("lf_conversion_timestamp_lock", String(Date.now()));
 
-      // Success State UI — hide form without destroying it so reopen still works
       var existingSuccess = mainFormContentBox.querySelector(".lf-success-canvas");
       if (existingSuccess) existingSuccess.parentNode.removeChild(existingSuccess);
       mainFormContentBox.classList.add("lf-showing-success");
